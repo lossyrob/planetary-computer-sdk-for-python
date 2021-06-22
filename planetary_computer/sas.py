@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Dict
+from typing import Any, Dict, TypeVar
 
 from functools import singledispatch
 import requests
@@ -10,6 +10,8 @@ from pystac_client import ItemCollection, ItemSearch
 
 from planetary_computer.settings import Settings
 from planetary_computer.utils import parse_blob_url
+
+T = TypeVar("T")
 
 
 class SASBase(BaseModel):
@@ -51,8 +53,12 @@ class SASToken(SASBase):
 TOKEN_CACHE: Dict[str, SASToken] = {}
 
 
+def sign(obj: T) -> T:
+    return _sign(obj)
+
+
 @singledispatch
-def sign(obj: Any) -> Any:
+def _sign(obj: Any) -> Any:
     """Sign the relevant URLs belonging to any supported object with a
     Shared Access (SAS) Token, which allows for read access.
 
@@ -67,7 +73,7 @@ def sign(obj: Any) -> Any:
     )
 
 
-@sign.register(str)
+@_sign.register(str)
 def _sign_url(url: str) -> str:
     """Sign a URL with a Shared Access (SAS) Token, which allows for read access.
 
@@ -101,7 +107,7 @@ def _sign_url(url: str) -> str:
     return token.sign(url).href
 
 
-@sign.register(Item)
+@_sign.register(Item)
 def _sign_item(item: Item) -> Item:
     """Sign all assets within a PySTAC item
 
@@ -120,7 +126,7 @@ def _sign_item(item: Item) -> Item:
     return signed_item
 
 
-@sign.register(Asset)
+@_sign.register(Asset)
 def _sign_asset(asset: Asset) -> Asset:
     """Sign a PySTAC asset
 
@@ -136,7 +142,7 @@ def _sign_asset(asset: Asset) -> Asset:
     return signed_asset
 
 
-@sign.register(ItemCollection)
+@_sign.register(ItemCollection)
 def _sign_item_collection(item_collection: ItemCollection) -> ItemCollection:
     """Sign a PySTAC item collection
 
@@ -157,7 +163,7 @@ def _sign_item_collection(item_collection: ItemCollection) -> ItemCollection:
     )
 
 
-@sign.register(ItemSearch)
+@_sign.register(ItemSearch)
 def _search_and_sign(search: ItemSearch) -> ItemCollection:
     """Perform a PySTAC Client search, and sign the resulting item collection
 
